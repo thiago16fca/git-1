@@ -132,6 +132,232 @@ void setup_auto_pager(const char *cmd, int def)
 	commit_pager_choice();
 }
 
+
+static void cmd_html_path_strategy()
+{
+        puts(system_path(GIT_HTML_PATH));
+        trace2_cmd_name("_query_");
+        exit(0);
+}
+
+static void cmd_man_path_strategy()
+{
+        puts(system_path(GIT_MAN_PATH));
+        trace2_cmd_name("_query_");
+        exit(0);
+}
+
+static void cmd_info_path_strategy()
+{
+        puts(system_path(GIT_INFO_PATH));
+        trace2_cmd_name("_query_");
+        exit(0);
+}
+
+static void cmd_paginate_strategy() { use_pager = 1; }
+
+static void cmd_no_pager_strategy()
+{
+
+        use_pager = 0;
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_no_replace_objects_strategy()
+{
+        read_replace_refs = 0;
+        setenv(NO_REPLACE_OBJECTS_ENVIRONMENT, "1", 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_git_dir_strategy(char ***argv, int *argc) 
+{
+        if (*argc < 2) {
+                fprintf(stderr, _("no directory given for '%s' option\n" ), "--git-dir");
+                usage(git_usage_string);
+        }
+
+        setenv(GIT_DIR_ENVIRONMENT, (*argv)[1], 1);
+        envchanged && *envchanged = 1;
+        (*argv)++;
+        (*argc)--;
+}
+
+static void cmd_namespace_strategy(char ***argv, int *argc) 
+{
+        if (*argc < 2) {
+                fprintf(stderr, _("no namespace given for --namespace\n" ));
+                usage(git_usage_string);
+        }
+        setenv(GIT_NAMESPACE_ENVIRONMENT, (*argv)[1], 1);
+        envchanged && *envchanged = 1;
+        (*argv)++;
+        (*argc)--;
+}
+
+static void cmd_work_tree_strategy(char *** argv, int *argc) 
+{
+        if (*argc < 2) {
+                fprintf(stderr, _("no directory given for '%s' option\n" ), "--work-tree");
+                usage(git_usage_string);
+        }
+        setenv(GIT_WORK_TREE_ENVIRONMENT, (*argv)[1], 1);
+        envchanged && *envchanged = 1;
+        (*argv)++;
+        (*argc)--;
+}
+
+static void cmd_super_prefix_strategy(char *** argv, int *argc) 
+{
+        if (*argc < 2) {
+                fprintf(stderr, _("no prefix given for --super-prefix\n" ));
+                usage(git_usage_string);
+        }
+        setenv(GIT_SUPER_PREFIX_ENVIRONMENT, (*argv)[1], 1);
+        envchanged && *envchanged = 1;
+        (*argv)++;
+        (*argc)--;
+}
+
+static void cmd_bare_strategy() 
+{
+        char *cwd = xgetcwd();
+        is_bare_repository_cfg = 1;
+        setenv(GIT_DIR_ENVIRONMENT, cwd, 0);
+        free(cwd);
+        setenv(GIT_IMPLICIT_WORK_TREE_ENVIRONMENT, "0", 1);
+        envchange && *envchanged = 1;
+}
+
+static void cmd_c_strategy(char ***argv, int *argc)
+{
+        if (*argc < 2) {
+                fprintf(stderr, _("-c expects a configuration string\n" ));
+                usage(git_usage_string);
+        }
+        git_config_push_parameter((*argv)[1]);
+        (*argv)++;
+        (*argc)--;
+}
+
+static void cmd_config_env_strategy(char ***argv, int *argc)
+{
+        if (*argc < 2) {
+                fprintf(stderr, _("no config key given for --config-env\n" ));
+                usage(git_usage_string);
+        }
+        git_config_push_env((*argv)[1]);
+        (*argv)++;
+        (*argc)--;
+}
+
+static void cmd_literal_pathspecs_strategy()
+{
+        setenv(GIT_LITERAL_PATHSPECS_ENVIRONMENT, "1", 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_no_literal_pathspecs_strategy()
+{
+        setenv(GIT_LITERAL_PATHSPECS_ENVIRONMENT, "0", 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_glob_pathspecs_strategy()
+{
+        setenv(GIT_GLOB_PATHSPECS_ENVIRONMENT, "1", 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_noglob_pathspecs_strategy()
+{
+        setenv(GIT_NOGLOB_PATHSPECS_ENVIRONMENT, "1", 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_icase_pathspecs_strategy()
+{
+        setenv(GIT_ICASE_PATHSPECS_ENVIRONMENT, "1", 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_no_optional_locks_strategy()
+{
+        setenv(GIT_OPTIONAL_LOCKS_ENVIRONMENT, "0", 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_shallow_file_strategy(char ***argv, int *argc)
+{
+        (*argv)++;
+        (*argc)--;
+        set_alternate_shallow_file(the_repository, (*argv)[0], 1);
+        envchanged && *envchanged = 1;
+}
+
+static void cmd_C_strategy(char ***argv, int *argc)
+{
+        if (*argc < 2) {
+                fprintf(stderr, _("no directory given for '%s' option\n" ), "-C");
+                usage(git_usage_string);
+        }
+        if ((*argv)[1][0]) {
+                if (chdir((*argv)[1]))
+                        die_errno("cannot change to '%s'", (*argv)[1]);
+                envchanged && *envchanged = 1;
+        }
+        (*argv)++;
+        (*argc)--;
+}
+
+typedef struct {
+        void (*bare)();
+        void (*html_path)();
+        void (*man_path)();
+        void (*info_path)();
+        void (*paginate)();
+        void (*no_pager)();
+        void (*no_replace_objects)();
+        void (*glob_pathspecs)();
+        void (*noglob_pathspecs)();
+        void (*literal_pathspecs)();
+        void (*no_literal_pathspecs)();
+        void (*icase_pathspecs)();
+        void (*no_optional_locks)();
+        void (*git_dir)(char ***argv, int *argc);
+        void (*namespace)(char ***argv, int *argc);
+        void (*work_tree)(char ***argv, int *argc);
+        void (*super_prefix)(char ***argv, int *argc);
+        void (*config_env)(char ***argv, int *argc);
+        void (*shallow_file)(char ***argv, int *argc);
+        void (*c)(char ***argv, int *argc);
+        void (*C)(char ***argv, int *argc);
+} CMD_STRATEGIES;
+
+CMD_STRATEGIES cmd_strategies = {
+        .html_path = cmd_html_path_strategy,
+        .man_path = cmd_man_path_strategy,
+        .info_path = cmd_info_path_strategy,
+        .paginate = cmd_paginate_strategy,
+        .no_pager = cmd_no_pager_strategy,
+        .no_replace_objects = cmd_no_replace_objects_strategy,
+        .git_dir = cmd_git_dir_strategy,
+        .namespace = cmd_namespace_strategy,
+        .work_tree = cmd_work_tree_strategy,
+        .super_prefix = cmd_super_prefix_strategy,
+        .bare = cmd_bare_strategy,
+        .config_env = cmd_config_env_strategy,
+        .literal_pathspecs = cmd_literal_pathspecs_strategy,
+        .no_literal_pathspecs = cmd_no_literal_pathspecs_strategy,
+        .glob_pathspecs = cmd_glob_pathspecs_strategy,
+        .noglob_pathspecs = cmd_noglob_pathspecs_strategy,
+        .no_optional_locks = cmd_no_optional_locks_strategy,
+        .c = cmd_c_strategy,
+        .C = cmd_C_strategy,
+};
+
+#define CMD_STRATEGIES(key) cmd_strategies.key
+
 static int handle_options(const char ***argv, int *argc, int *envchanged)
 {
 	const char **orig_argv = *argv;
@@ -160,155 +386,63 @@ static int handle_options(const char ***argv, int *argc, int *envchanged)
 				trace2_cmd_name("_query_");
 				exit(0);
 			}
-		} else if (!strcmp(cmd, "--html-path")) {
-			puts(system_path(GIT_HTML_PATH));
-			trace2_cmd_name("_query_");
-			exit(0);
-		} else if (!strcmp(cmd, "--man-path")) {
-			puts(system_path(GIT_MAN_PATH));
-			trace2_cmd_name("_query_");
-			exit(0);
-		} else if (!strcmp(cmd, "--info-path")) {
-			puts(system_path(GIT_INFO_PATH));
-			trace2_cmd_name("_query_");
-			exit(0);
-		} else if (!strcmp(cmd, "-p") || !strcmp(cmd, "--paginate")) {
-			use_pager = 1;
-		} else if (!strcmp(cmd, "-P") || !strcmp(cmd, "--no-pager")) {
-			use_pager = 0;
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--no-replace-objects")) {
-			read_replace_refs = 0;
-			setenv(NO_REPLACE_OBJECTS_ENVIRONMENT, "1", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--git-dir")) {
-			if (*argc < 2) {
-				fprintf(stderr, _("no directory given for '%s' option\n" ), "--git-dir");
-				usage(git_usage_string);
-			}
-			setenv(GIT_DIR_ENVIRONMENT, (*argv)[1], 1);
-			if (envchanged)
-				*envchanged = 1;
-			(*argv)++;
-			(*argc)--;
-		} else if (skip_prefix(cmd, "--git-dir=", &cmd)) {
+		} else if (!strcmp(cmd, "--html-path")) 
+                        CMD_STRATEGIES(html_path)();
+		  else if (!strcmp(cmd, "--man-path")) 
+                        CMD_STRATEGIES(man_path)();
+                  else if (!strcmp(cmd, "--info-path")) 
+                        CMD_STRATEGIES(info_path)();
+		  else if (!strcmp(cmd, "-p") || !strcmp(cmd, "--paginate")) 
+                        CMD_STRATEGIES(paginate)();
+		  else if (!strcmp(cmd, "-P") || !strcmp(cmd, "--no-pager")) 
+                        CMD_STRATEGIES(no_pager)();
+		  else if (!strcmp(cmd, "--no-replace-objects")) 
+                        CMD_STRATEGIES(no_replace_objects)();
+		  else if (!strcmp(cmd, "--git-dir")) 
+                        CMD_STRATEGIES(git_dir)(argv, argc);
+		 else if (skip_prefix(cmd, "--git-dir=", &cmd)) {
 			setenv(GIT_DIR_ENVIRONMENT, cmd, 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--namespace")) {
-			if (*argc < 2) {
-				fprintf(stderr, _("no namespace given for --namespace\n" ));
-				usage(git_usage_string);
-			}
-			setenv(GIT_NAMESPACE_ENVIRONMENT, (*argv)[1], 1);
-			if (envchanged)
-				*envchanged = 1;
-			(*argv)++;
-			(*argc)--;
-		} else if (skip_prefix(cmd, "--namespace=", &cmd)) {
+			envchanged && *envchanged = 1;
+		} else if (!strcmp(cmd, "--namespace")) 
+                        CMD_STRATEGIES(namespace)(argv, argc);
+		 else if (skip_prefix(cmd, "--namespace=", &cmd)) {
 			setenv(GIT_NAMESPACE_ENVIRONMENT, cmd, 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--work-tree")) {
-			if (*argc < 2) {
-				fprintf(stderr, _("no directory given for '%s' option\n" ), "--work-tree");
-				usage(git_usage_string);
-			}
-			setenv(GIT_WORK_TREE_ENVIRONMENT, (*argv)[1], 1);
-			if (envchanged)
-				*envchanged = 1;
-			(*argv)++;
-			(*argc)--;
-		} else if (skip_prefix(cmd, "--work-tree=", &cmd)) {
+			envchanged && *envchanged = 1;
+		} else if (!strcmp(cmd, "--work-tree")) 
+                        CMD_STRATEGIES(work_tree)(argv, argc);
+		  else if (skip_prefix(cmd, "--work-tree=", &cmd)) {
 			setenv(GIT_WORK_TREE_ENVIRONMENT, cmd, 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--super-prefix")) {
-			if (*argc < 2) {
-				fprintf(stderr, _("no prefix given for --super-prefix\n" ));
-				usage(git_usage_string);
-			}
-			setenv(GIT_SUPER_PREFIX_ENVIRONMENT, (*argv)[1], 1);
-			if (envchanged)
-				*envchanged = 1;
-			(*argv)++;
-			(*argc)--;
-		} else if (skip_prefix(cmd, "--super-prefix=", &cmd)) {
+			envchanged && *envchanged = 1;
+		} else if (!strcmp(cmd, "--super-prefix")) 
+                        CMD_STRATEGIES(super_prefix)(argv, argc)
+		  else if (skip_prefix(cmd, "--super-prefix=", &cmd)) {
 			setenv(GIT_SUPER_PREFIX_ENVIRONMENT, cmd, 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--bare")) {
-			char *cwd = xgetcwd();
-			is_bare_repository_cfg = 1;
-			setenv(GIT_DIR_ENVIRONMENT, cwd, 0);
-			free(cwd);
-			setenv(GIT_IMPLICIT_WORK_TREE_ENVIRONMENT, "0", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "-c")) {
-			if (*argc < 2) {
-				fprintf(stderr, _("-c expects a configuration string\n" ));
-				usage(git_usage_string);
-			}
-			git_config_push_parameter((*argv)[1]);
-			(*argv)++;
-			(*argc)--;
-		} else if (!strcmp(cmd, "--config-env")) {
-			if (*argc < 2) {
-				fprintf(stderr, _("no config key given for --config-env\n" ));
-				usage(git_usage_string);
-			}
-			git_config_push_env((*argv)[1]);
-			(*argv)++;
-			(*argc)--;
-		} else if (skip_prefix(cmd, "--config-env=", &cmd)) {
+			envchanged && *envchanged = 1;
+		} else if (!strcmp(cmd, "--bare")) 
+                        CMD_STRATEGIES(bare)();
+		  else if (!strcmp(cmd, "-c")) 
+                        CMD_STRATEGIES(c)(argv, argc);
+		  else if (!strcmp(cmd, "--config-env")) 
+                        CMD_STRATEGIES(config_env)(argv, argc);
+		  else if (skip_prefix(cmd, "--config-env=", &cmd)) {
 			git_config_push_env(cmd);
-		} else if (!strcmp(cmd, "--literal-pathspecs")) {
-			setenv(GIT_LITERAL_PATHSPECS_ENVIRONMENT, "1", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--no-literal-pathspecs")) {
-			setenv(GIT_LITERAL_PATHSPECS_ENVIRONMENT, "0", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--glob-pathspecs")) {
-			setenv(GIT_GLOB_PATHSPECS_ENVIRONMENT, "1", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--noglob-pathspecs")) {
-			setenv(GIT_NOGLOB_PATHSPECS_ENVIRONMENT, "1", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--icase-pathspecs")) {
-			setenv(GIT_ICASE_PATHSPECS_ENVIRONMENT, "1", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--no-optional-locks")) {
-			setenv(GIT_OPTIONAL_LOCKS_ENVIRONMENT, "0", 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "--shallow-file")) {
-			(*argv)++;
-			(*argc)--;
-			set_alternate_shallow_file(the_repository, (*argv)[0], 1);
-			if (envchanged)
-				*envchanged = 1;
-		} else if (!strcmp(cmd, "-C")) {
-			if (*argc < 2) {
-				fprintf(stderr, _("no directory given for '%s' option\n" ), "-C");
-				usage(git_usage_string);
-			}
-			if ((*argv)[1][0]) {
-				if (chdir((*argv)[1]))
-					die_errno("cannot change to '%s'", (*argv)[1]);
-				if (envchanged)
-					*envchanged = 1;
-			}
-			(*argv)++;
-			(*argc)--;
-		} else if (skip_prefix(cmd, "--list-cmds=", &cmd)) {
+		} else if (!strcmp(cmd, "--literal-pathspecs")) 
+                        CMD_STRATEGIES(literal_pathspecs)();
+		  else if (!strcmp(cmd, "--no-literal-pathspecs")) 
+                        CMD_STRATEGIES(no_literal_pathspecs)();
+		  else if (!strcmp(cmd, "--glob-pathspecs")) 
+                        CMD_STRATEGIES(glob_pathspecs)();
+		  else if (!strcmp(cmd, "--noglob-pathspecs")) 
+                        CMD_STRATEGIES(noglob_pathspecs)();
+		  else if (!strcmp(cmd, "--icase-pathspecs")) 
+                        CMD_STRATEGIES(icase_pathspecs)();
+		  else if (!strcmp(cmd, "--no-optional-locks")) 
+                        CMD_STRATEGIES(no_optional_locks)();
+		  else if (!strcmp(cmd, "--shallow-file")) 
+                        CMD_STRATEGIES(shallow_file)(argv, argc);
+		  else if (!strcmp(cmd, "-C")) 
+                        CMD_STRATEGIES(C)(argv, argc);
+		  else if (skip_prefix(cmd, "--list-cmds=", &cmd)) {
 			trace2_cmd_name("_query_");
 			if (!strcmp(cmd, "parseopt")) {
 				struct string_list list = STRING_LIST_INIT_DUP;
